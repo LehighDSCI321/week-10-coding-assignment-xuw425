@@ -4,7 +4,7 @@ including a specialized Directed Acyclic Graph (DAG) that prevents cycles.
 """
 from collections import deque
 
-# --- Base Classes (Modified to pass all autograder tests) ---
+# --- Base Classes (Final Version) ---
 
 class Digraph:
     """
@@ -14,6 +14,7 @@ class Digraph:
         """Initializes a new, empty Digraph."""
         self.adj = {}
         self.nodes = {}
+        self.edges = {}
 
     def add_node(self, node, attrs=None):
         """Adds a node to the graph if it does not already exist."""
@@ -25,17 +26,25 @@ class Digraph:
         """Returns a list of all nodes in the graph."""
         return list(self.adj.keys())
 
+    def get_node_value(self, node):
+        """Returns the attributes/value of a given node."""
+        return self.nodes.get(node)
+
     def add_edge(self, start_node, end_node, **kwargs):
         """
-        Adds a directed edge from start_node to end_node.
-        Ignores any additional keyword arguments.
+        Adds a directed edge from start_node to end_node and stores its attributes.
         """
-        # The **kwargs parameter allows the method to accept extra arguments.
-        _ = kwargs # Suppress unused variable warning for kwargs.
         self.add_node(start_node)
         self.add_node(end_node)
         if end_node not in self.adj[start_node]:
             self.adj[start_node].append(end_node)
+        # Store edge attributes, like weight
+        self.edges[(start_node, end_node)] = kwargs
+
+    def get_edge_weight(self, start_node, end_node):
+        """Returns the 'edge_weight' attribute of an edge."""
+        edge_attrs = self.edges.get((start_node, end_node), {})
+        return edge_attrs.get('edge_weight')
 
     def successors(self, node):
         """Returns a sorted list of successors for a given node."""
@@ -74,7 +83,7 @@ class SortableDigraph(Digraph):
                 visit(node)
         return sorted_order
 
-# --- Classes for the Assignment (Modified to pass all autograder tests) ---
+# --- Classes for the Assignment (Final Version) ---
 
 class TraversableDigraph(SortableDigraph):
     """
@@ -137,10 +146,15 @@ class DAG(TraversableDigraph):
         self.add_node(start_node)
         self.add_node(end_node)
 
-        # A cycle is created if a path already exists from end_node to start_node.
-        if start_node == end_node or start_node in self.dfs(end_node):
-            raise ValueError(
-                f"Adding edge from {start_node} to {end_node} creates a cycle."
-            )
+        if start_node == end_node:
+            raise ValueError(f"Adding edge from {start_node} to {end_node} creates a cycle.")
 
+        # Temporarily add the edge to check for a cycle
         super().add_edge(start_node, end_node, **kwargs)
+        
+        # Check if the new edge created a path from the end_node back to the start_node
+        if start_node in self.dfs(end_node):
+            # Backtrack: remove the edge that caused the cycle
+            self.adj[start_node].remove(end_node)
+            del self.edges[(start_node, end_node)]
+            raise ValueError(f"Adding edge from {start_node} to {end_node} creates a cycle.")
