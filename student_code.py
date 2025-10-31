@@ -38,7 +38,6 @@ class Digraph:
         self.add_node(end_node)
         if end_node not in self.adj[start_node]:
             self.adj[start_node].append(end_node)
-        # Store edge attributes, like weight
         self.edges[(start_node, end_node)] = kwargs
 
     def get_edge_weight(self, start_node, end_node):
@@ -146,15 +145,10 @@ class DAG(TraversableDigraph):
         self.add_node(start_node)
         self.add_node(end_node)
 
-        if start_node == end_node:
-            raise ValueError(f"Adding edge from {start_node} to {end_node} creates a cycle.")
+        # A cycle is created if a path already exists from end_node to start_node.
+        if start_node == end_node or start_node in self.dfs(end_node):
+            raise ValueError(
+                f"Adding edge from {start_node} to {end_node} creates a cycle."
+            )
 
-        # Temporarily add the edge to check for a cycle
         super().add_edge(start_node, end_node, **kwargs)
-        
-        # Check if the new edge created a path from the end_node back to the start_node
-        if start_node in self.dfs(end_node):
-            # Backtrack: remove the edge that caused the cycle
-            self.adj[start_node].remove(end_node)
-            del self.edges[(start_node, end_node)]
-            raise ValueError(f"Adding edge from {start_node} to {end_node} creates a cycle.")
